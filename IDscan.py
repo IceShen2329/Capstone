@@ -2,9 +2,8 @@ import cv2
 import pytesseract
 import re
 import numpy as np
-from PIL import Image
-import os
 from datetime import datetime
+import os
 
 class IDScanner:
     def __init__(self):
@@ -13,37 +12,32 @@ class IDScanner:
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
         
-        # Configure Tesseract (adjust path if needed)
-        # For Windows: pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-        
         self.last_scanned_data = {"student_no": "", "name": "", "course": "", "year": ""}
         
-        # Create directory for saved screenshots
-        self.screenshot_dir = "id_screenshots"
-        if not os.path.exists(self.screenshot_dir):
-            os.makedirs(self.screenshot_dir)
+        # Create directory for saved text files
+        self.text_output_dir = "id_text_output"
+        if not os.path.exists(self.text_output_dir):
+            os.makedirs(self.text_output_dir)
         
         # Button state tracking
         self.button_pressed = False
         self.button_hover = False
-        
+    
     def calculate_scan_area(self, frame_width, frame_height):
         """Calculate optimal scan area based on frame resolution and ID card proportions"""
         # Modified aspect ratio to make scanning area shorter (reduced height)
-        # Standard ID card is 1.586:1, but we'll use a wider ratio to reduce height
         id_aspect_ratio = 2.2  # Increased from 1.586 to make it shorter/wider
         
         # Calculate scan area dimensions as percentage of frame size
-        # Reduced width ratios for narrower scanning area
         if frame_width >= 1920:  # 1080p and higher
-            scan_width_ratio = 0.35  # Reduced from 0.5 to 0.35 (35% of frame width)
-            margin_ratio = 0.05      # 5% margin from edges
+            scan_width_ratio = 0.35
+            margin_ratio = 0.05
         elif frame_width >= 1280:  # 720p
-            scan_width_ratio = 0.4   # Reduced from 0.6 to 0.4 (40% of frame width)
-            margin_ratio = 0.08      # 8% margin from edges
+            scan_width_ratio = 0.4
+            margin_ratio = 0.08
         else:  # Lower resolutions
-            scan_width_ratio = 0.5   # Reduced from 0.7 to 0.5 (50% of frame width)
-            margin_ratio = 0.1       # 10% margin from edges
+            scan_width_ratio = 0.5
+            margin_ratio = 0.1
         
         # Calculate scan area dimensions
         scan_width = int(frame_width * scan_width_ratio)
@@ -75,12 +69,12 @@ class IDScanner:
             button_height = 40
         
         # Position button below the scan area with some margin
-        button_x = scan_x + (scan_width - button_width) // 2  # Center horizontally with scan area
-        button_y = scan_y + scan_height + 30  # 30 pixels below scan area
+        button_x = scan_x + (scan_width - button_width) // 2
+        button_y = scan_y + scan_height + 30
         
         # Ensure button doesn't go off screen
         if button_y + button_height > frame_height - 20:
-            button_y = scan_y - button_height - 30  # Place above scan area if no room below
+            button_y = scan_y - button_height - 30
         
         return button_x, button_y, button_width, button_height
     
@@ -111,7 +105,7 @@ class IDScanner:
                      border_color, 3)
         
         # Add button text
-        font_scale = button_width / 200 * 0.7  # Scale font with button size
+        font_scale = button_width / 200 * 0.7
         text = "SCAN ID"
         text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
         text_x = button_x + (button_width - text_size[0]) // 2
@@ -119,18 +113,6 @@ class IDScanner:
         
         cv2.putText(frame, text, (text_x, text_y), 
                    cv2.FONT_HERSHEY_SIMPLEX, font_scale, text_color, 2)
-        
-        # Add scan icon (simple camera-like shape)
-        icon_size = min(button_height // 3, 15)
-        icon_x = button_x + 15
-        icon_y = button_y + (button_height - icon_size) // 2
-        
-        # Draw simple camera icon
-        cv2.rectangle(frame, (icon_x, icon_y), 
-                     (icon_x + icon_size, icon_y + icon_size), 
-                     text_color, 2)
-        cv2.circle(frame, (icon_x + icon_size//2, icon_y + icon_size//2), 
-                  icon_size//3, text_color, -1)
         
         return button_x, button_y, button_width, button_height
     
@@ -164,7 +146,7 @@ class IDScanner:
         # Draw main scanning rectangle
         cv2.rectangle(frame, (x, y), (x + scan_width, y + scan_height), (0, 255, 0), 3)
         
-        # Draw corner indicators for better visual guidance
+        # Draw corner indicators
         corner_length = min(30, scan_width // 10, scan_height // 10)
         thickness = 4
         
@@ -196,13 +178,11 @@ class IDScanner:
         self.button_area = (button_x, button_y, button_width, button_height)
         self.draw_scan_button(frame, button_x, button_y, button_width, button_height)
         
-        # Add instruction text with better positioning
-        font_scale = width / 1920 * 0.7  # Scale font with resolution
+        # Add instruction text
+        font_scale = width / 1920 * 0.7
         instruction_text = "Position ID card in frame - Click SCAN ID button or press SPACE - Press 'q' to quit"
         text_size = cv2.getTextSize(instruction_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 2)[0]
         text_x = (width - text_size[0]) // 2
-        
-        # Position text above scan area or at top if no room
         text_y = y - 30 if y > 60 else 30
         
         # Add background for better text visibility
@@ -212,7 +192,7 @@ class IDScanner:
                    cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 255, 0), 2)
         
         return x, y, scan_width, scan_height
-        
+    
     def preprocess_image(self, image):
         """Preprocess the image for better OCR results"""
         # Convert to grayscale
@@ -233,10 +213,10 @@ class IDScanner:
     
     def extract_student_info(self, text):
         """Extract student number, name, course, and year from OCR text"""
-        print(f"Raw OCR Text:\n{text}")  # Debug: Show raw OCR output
+        print(f"Raw OCR Text:\n{text}")
         print("-" * 40)
         
-        lines = [line.strip() for line in text.split('\n') if line.strip()]  # Remove empty lines
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
         student_no = ""
         name = ""
         course = ""
@@ -276,7 +256,7 @@ class IDScanner:
                 year = year_match.group()
                 print(f"  -> Found year: {year}")
             
-            # Enhanced name search - Multiple approaches
+            # Enhanced name search
             if not name_found:
                 # Method 1: Look for "NAME" keyword patterns
                 name_keywords = ["NAME", "STUDENT NAME", "FULL NAME", "NOMBRE"]
@@ -306,41 +286,37 @@ class IDScanner:
                         if not name_found:
                             clean_line = line_upper.replace(keyword, "").strip()
                             if len(clean_line) > 2:
-                                name = clean_line.title()  # Convert to proper case
+                                name = clean_line.title()
                                 name_found = True
                                 print(f"  -> Found name (cleaned same line): {name}")
                                 break
                 
-                # Method 2: Look for lines that look like names (multiple words, mostly letters)
+                # Method 2: Look for lines that look like names
                 if not name_found and len(line) > 3:
-                    # Check if line looks like a name
-                    # Remove common punctuation and check
                     clean_line = re.sub(r'[^\w\s]', ' ', line).strip()
                     words = clean_line.split()
                     
                     if (len(words) >= 2 and 
                         len(clean_line) >= 5 and
-                        len(clean_line) <= 50 and  # Names shouldn't be too long
-                        not re.search(student_no_pattern, line) and  # Not a student number
-                        not re.search(course_pattern, line_upper) and  # Not a course
-                        "YEAR" not in line_upper and  # Not a year
-                        not re.search(r'\d{4}', line) and  # No 4-digit numbers (years/IDs)
-                        sum(1 for c in line if c.isalpha()) / len(line) > 0.7):  # Mostly letters
+                        len(clean_line) <= 50 and
+                        not re.search(student_no_pattern, line) and
+                        not re.search(course_pattern, line_upper) and
+                        "YEAR" not in line_upper and
+                        not re.search(r'\d{4}', line) and
+                        sum(1 for c in line if c.isalpha()) / len(line) > 0.7):
                         
-                        # Additional checks for name-like patterns
-                        if (any(word[0].isupper() for word in words) or  # Has capitalized words
-                            any(len(word) > 2 for word in words)):  # Has substantial words
+                        if (any(word[0].isupper() for word in words) or
+                            any(len(word) > 2 for word in words)):
                             name = line.strip()
                             name_found = True
                             print(f"  -> Found name (pattern matching): {name}")
                 
-                # Method 3: Look for common name positions (usually after student number)
+                # Method 3: Look for common name positions
                 if not name_found and student_no and i > 0:
-                    # Check if this line could be a name following student number
                     prev_line = lines[i-1] if i > 0 else ""
                     if (student_no in prev_line and 
                         len(line) > 3 and 
-                        not re.search(r'\d', line) and  # No numbers
+                        not re.search(r'\d', line) and
                         line.replace(' ', '').replace('.', '').replace(',', '').isalpha()):
                         name = line.strip()
                         name_found = True
@@ -350,40 +326,37 @@ class IDScanner:
         return student_no, name, course, year
     
     def capture_and_process_scan(self, frame, scan_area):
-        """Capture the scan area, save it as image, and extract information"""
+        """Capture the scan area and extract information to text file"""
         x, y, w, h = scan_area
         
         # Extract the scan area from the frame
         scan_region = frame[y:y+h, x:x+w]
         
-        # Generate timestamp for filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Save the original color scan area
-        original_filename = os.path.join(self.screenshot_dir, f"id_scan_{timestamp}_original.jpg")
-        cv2.imwrite(original_filename, scan_region)
-        
         # Preprocess the image for OCR
         processed = self.preprocess_image(scan_region)
         
-        # Save the processed image too
-        processed_filename = os.path.join(self.screenshot_dir, f"id_scan_{timestamp}_processed.jpg")
-        cv2.imwrite(processed_filename, processed)
-        
-        # Convert to PIL Image for pytesseract
-        pil_image = Image.fromarray(processed)
-        
         # Perform OCR
         try:
-            text = pytesseract.image_to_string(pil_image, config='--psm 6')
+            text = pytesseract.image_to_string(processed, config='--psm 6')
             student_no, name, course, year = self.extract_student_info(text)
+            
+            # Generate timestamp for filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            text_filename = os.path.join(self.text_output_dir, f"id_scan_{timestamp}.txt")
+            
+            # Save to text file
+            with open(text_filename, "w") as f:
+                f.write(f"Scan Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"STUDENT NO: {student_no}\n")
+                f.write(f"NAME: {name}\n")
+                f.write(f"COURSE: {course}\n")
+                f.write(f"YEAR: {year}\n")
+                f.write(f"\nRaw OCR Text:\n{text}\n")
             
             # Display results in terminal
             print("\n" + "="*60)
             print("SCAN CAPTURED AND PROCESSED!")
-            print(f"Files saved:")
-            print(f"  - Original: {original_filename}")
-            print(f"  - Processed: {processed_filename}")
+            print(f"Text data saved to: {text_filename}")
             print("-" * 60)
             print("EXTRACTED INFORMATION:")
             print(f"STUDENT NO: {student_no if student_no else 'Not found'}")
@@ -391,21 +364,6 @@ class IDScanner:
             print(f"COURSE: {course if course else 'Not found'}")
             print(f"YEAR: {year if year else 'Not found'}")
             print("="*60)
-            
-            # Save to text file as well
-            text_filename = os.path.join(self.screenshot_dir, f"id_scan_{timestamp}_data.txt")
-            with open(text_filename, "w") as f:
-                f.write(f"Scan Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Original Image: {original_filename}\n")
-                f.write(f"Processed Image: {processed_filename}\n")
-                f.write(f"STUDENT NO: {student_no}\n")
-                f.write(f"NAME: {name}\n")
-                f.write(f"COURSE: {course}\n")
-                f.write(f"YEAR: {year}\n")
-                f.write(f"\nRaw OCR Text:\n{text}\n")
-            
-            print(f"Data also saved to: {text_filename}")
-            print("")
             
             return True
             
@@ -420,7 +378,7 @@ class IDScanner:
         print("- Position ID card within the green frame")
         print("- Click the 'SCAN ID' button or press SPACEBAR to capture and process")
         print("- Press 'q' to quit")
-        print("- Screenshots will be saved in 'id_screenshots' folder")
+        print("- Text data will be saved in 'id_text_output' folder")
         print("-" * 60)
         
         # Initialize mouse callback and trigger flag
@@ -451,10 +409,10 @@ class IDScanner:
             
             if key == ord('q'):
                 break
-            elif key == ord(' ') or self.trigger_scan:  # Spacebar or button click
+            elif key == ord(' ') or self.trigger_scan:
                 if self.trigger_scan:
                     print("Button clicked - Capturing scan area...")
-                    self.trigger_scan = False  # Reset flag
+                    self.trigger_scan = False
                 else:
                     print("Spacebar pressed - Capturing scan area...")
                 self.capture_and_process_scan(frame, scan_area)
