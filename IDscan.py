@@ -652,7 +652,7 @@ class IDScanner:
             
             if key == ord('q'):
                 break
-            elif key == ord('r'):  # Reset current scan data
+            if key == ord('r'):  # Reset current scan data
                 self.current_scan_data = {"student_no": "", "name": ""}
                 print("Scan data reset. Looking for new ID...")
     
