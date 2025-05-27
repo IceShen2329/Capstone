@@ -36,16 +36,17 @@ class IDScanner:
     def find_available_cameras(self):
         """Find all available camera indices"""
         available_cameras = []
-        for i in range(1):  # Check first 5 camera indices
-            cap = cv2.VideoCapture(1)
+        for i in range(5):  # Check first 5 camera indices
+            cap = cv2.VideoCapture(i)
             if cap.isOpened():
                 ret, _ = cap.read()
                 if ret:
-                    available_cameras.append(1)
-                    print(f"Found working camera at index {1}")
+                    available_cameras.append(i)
+                    print(f"Found working camera at index {i}")
                 cap.release()
             time.sleep(0.1)  # Small delay between attempts
         return available_cameras
+
     
     def initialize_camera(self):
         """Initialize camera with multiple fallback options"""
